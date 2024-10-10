@@ -176,6 +176,14 @@ module Sentry
     private def build_app_process
       stdout "🤖  compiling #{display_name}..."
       build_args = @build_args
+
+      # Windows cannot override an open app process. That's why we need to terminate it first.
+      {% if flag?(:win32) %}
+        if @app_process
+          @app_process.not_nil!.terminate
+        end
+      {% end %}
+
       if build_args.size > 0
         Process.run(@build_command, build_args, shell: true, output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
       else
@@ -188,7 +196,7 @@ module Sentry
       if app_process.is_a? Process
         unless app_process.terminated?
           stdout "🤖  killing #{display_name}..."
-          app_process.signal(:kill)
+          app_process.terminate
           app_process.wait
         end
       end
